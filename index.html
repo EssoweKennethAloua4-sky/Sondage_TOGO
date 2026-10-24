@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sondage — Questions sur le Togo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 32px 16px;
+            background: #fff;
+            color: #000;
+            font-family: Arial, sans-serif;
+            line-height: 1.5;
+        }
+
+        main {
+            max-width: 560px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.6rem;
+        }
+
+        label, legend {
+            display: block;
+            margin-top: 18px;
+            font-weight: bold;
+        }
+
+        input[type="text"], select, textarea {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 6px;
+            padding: 8px;
+            border: 1px solid #000;
+            font: inherit;
+        }
+
+        fieldset {
+            border: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .option input[type="text"] {
+            margin-top: 0;
+        }
+
+        small {
+            font-weight: normal;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            margin-top: 24px;
+            padding: 12px;
+            border: 1px solid #000;
+            background: #000;
+            color: #fff;
+            font: inherit;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .piege {
+            position: absolute;
+            left: -9999px;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Questions sur le Togo</h1>
+        <p>
+            Nous préparons un quiz sur le Togo. Aidez-nous en proposant une question
+            avec trois réponses possibles. Vous pouvez en envoyer autant que vous voulez.
+        </p>
+
+        <form id="formulaire">
+            <label for="categorie">Catégorie</label>
+            <select id="categorie" required>
+                <option value="">— Choisir —</option>
+                <option>Histoire</option>
+                <option>Géographie</option>
+                <option>Culture</option>
+                <option>Sport</option>
+                <option>Institutions</option>
+            </select>
+
+            <label for="question">Question</label>
+            <textarea id="question" rows="2" maxlength="200" required></textarea>
+
+            <fieldset>
+                <legend>Trois réponses <small>(cochez la bonne)</small></legend>
+                <div class="option"><input type="radio" name="bonne" value="0" required><input type="text" class="reponse" maxlength="80" placeholder="Réponse 1" required></div>
+                <div class="option"><input type="radio" name="bonne" value="1"><input type="text" class="reponse" maxlength="80" placeholder="Réponse 2" required></div>
+                <div class="option"><input type="radio" name="bonne" value="2"><input type="text" class="reponse" maxlength="80" placeholder="Réponse 3" required></div>
+            </fieldset>
+
+            <label for="pseudo">Prénom <small>(facultatif)</small></label>
+            <input type="text" id="pseudo" maxlength="40">
+
+            <!-- Champ piège invisible contre les robots -->
+            <input type="text" id="site-web" class="piege" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+            <p id="message" role="status"></p>
+            <button type="submit" id="envoyer">Envoyer</button>
+        </form>
+
+        <div id="merci" hidden>
+            <p><strong>Merci, votre question a bien été enregistrée !</strong></p>
+            <button type="button" id="autre">Proposer une autre question</button>
+        </div>
+    </main>
+
+    <script>
+        const formulaire = document.getElementById("formulaire");
+        const message = document.getElementById("message");
+        const boutonEnvoyer = document.getElementById("envoyer");
+
+        formulaire.addEventListener("submit", async (evenement) => {
+            evenement.preventDefault();
+            const bonne = document.querySelector('input[name="bonne"]:checked');
+
+            boutonEnvoyer.disabled = true;
+            message.textContent = "Envoi en cours…";
+
+            try {
+                const reponse = await fetch("envoyer", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        categorie: document.getElementById("categorie").value,
+                        question: document.getElementById("question").value.trim(),
+                        options: [...document.querySelectorAll(".reponse")].map((champ) => champ.value.trim()),
+                        bonne_reponse: bonne ? Number(bonne.value) : null,
+                        pseudo: document.getElementById("pseudo").value.trim(),
+                        site_web: document.getElementById("site-web").value,
+                    }),
+                });
+                const resultat = await reponse.json().catch(() => ({}));
+
+                if (!reponse.ok || !resultat.ok) {
+                    message.textContent = resultat.erreur || "L'envoi n'a pas marché, réessayez plus tard.";
+                    return;
+                }
+
+                formulaire.hidden = true;
+                document.getElementById("merci").hidden = false;
+            } catch {
+                message.textContent = "L'envoi n'a pas marché, réessayez plus tard.";
+            } finally {
+                boutonEnvoyer.disabled = false;
+            }
+        });
+
+        // On garde la catégorie et le prénom pour enchaîner plus vite
+        document.getElementById("autre").addEventListener("click", () => {
+            const garder = ["categorie", "pseudo"].map((id) => [id, document.getElementById(id).value]);
+            formulaire.reset();
+            garder.forEach(([id, valeur]) => (document.getElementById(id).value = valeur));
+            message.textContent = "";
+            document.getElementById("merci").hidden = true;
+            formulaire.hidden = false;
+            document.getElementById("question").focus();
+        });
+    </script>
+</body>
+</html>

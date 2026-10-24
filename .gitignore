@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Reponses du sondage (donnees du serveur, a ne pas ecraser)
+reponses_sondage.csv
