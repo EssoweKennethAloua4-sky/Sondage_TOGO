@@ -91,6 +91,10 @@
             Nous préparons un quiz sur le Togo. Aidez-nous en proposant une question
             avec trois réponses possibles. Vous pouvez en envoyer autant que vous voulez.
         </p>
+        <p>
+            Vous pouvez aussi joindre un fichier (photo, document, note vocale…)
+            à la place ou en plus de la question.
+        </p>
 
         <form id="formulaire">
             <label for="categorie">Catégorie</label>
@@ -104,14 +108,19 @@
             </select>
 
             <label for="question">Question</label>
-            <textarea id="question" rows="2" maxlength="200" required></textarea>
+            <textarea id="question" rows="2" maxlength="200"></textarea>
 
             <fieldset>
                 <legend>Trois réponses <small>(cochez la bonne)</small></legend>
-                <div class="option"><input type="radio" name="bonne" value="0" required><input type="text" class="reponse" maxlength="80" placeholder="Réponse 1" required></div>
-                <div class="option"><input type="radio" name="bonne" value="1"><input type="text" class="reponse" maxlength="80" placeholder="Réponse 2" required></div>
-                <div class="option"><input type="radio" name="bonne" value="2"><input type="text" class="reponse" maxlength="80" placeholder="Réponse 3" required></div>
+                <div class="option"><input type="radio" name="bonne" value="0"><input type="text" class="reponse" maxlength="80" placeholder="Réponse 1"></div>
+                <div class="option"><input type="radio" name="bonne" value="1"><input type="text" class="reponse" maxlength="80" placeholder="Réponse 2"></div>
+                <div class="option"><input type="radio" name="bonne" value="2"><input type="text" class="reponse" maxlength="80" placeholder="Réponse 3"></div>
             </fieldset>
+
+            <label for="fichier">Fichier <small>(facultatif : photo, document, audio ou vidéo, 10 Mo maximum)</small></label>
+            <input type="file" id="fichier"
+                accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.odt,.rtf,.txt,.csv,.xls,.xlsx,.ods,.ppt,.pptx,.odp,.heic,.opus">
+            <p id="info-fichier"><small></small></p>
 
             <label for="pseudo">Prénom <small>(facultatif)</small></label>
             <input type="text" id="pseudo" maxlength="40">
@@ -124,7 +133,7 @@
         </form>
 
         <div id="merci" hidden>
-            <p><strong>Merci, votre question a bien été enregistrée !</strong></p>
+            <p><strong>Merci, votre envoi a bien été enregistré !</strong></p>
             <button type="button" id="autre">Proposer une autre question</button>
         </div>
     </main>
@@ -133,27 +142,42 @@
         const formulaire = document.getElementById("formulaire");
         const message = document.getElementById("message");
         const boutonEnvoyer = document.getElementById("envoyer");
+        const champFichier = document.getElementById("fichier");
+        const TAILLE_MAX = 10 * 1024 * 1024;
+
+        // Prévient tout de suite si le fichier est trop lourd
+        champFichier.addEventListener("change", () => {
+            const fichier = champFichier.files[0];
+            const info = document.querySelector("#info-fichier small");
+            if (!fichier) info.textContent = "";
+            else if (fichier.size > TAILLE_MAX) info.textContent = "⚠ Ce fichier dépasse 10 Mo, il sera refusé.";
+            else info.textContent = `${fichier.name} (${(fichier.size / 1024 / 1024).toFixed(1)} Mo)`;
+        });
 
         formulaire.addEventListener("submit", async (evenement) => {
             evenement.preventDefault();
             const bonne = document.querySelector('input[name="bonne"]:checked');
+            const fichier = champFichier.files[0];
+
+            if (fichier && fichier.size > TAILLE_MAX) {
+                message.textContent = "Le fichier est trop lourd (10 Mo maximum).";
+                return;
+            }
+
+            const donnees = new FormData();
+            donnees.append("categorie", document.getElementById("categorie").value);
+            donnees.append("question", document.getElementById("question").value.trim());
+            document.querySelectorAll(".reponse").forEach((champ) => donnees.append("options", champ.value.trim()));
+            donnees.append("bonne_reponse", bonne ? bonne.value : "");
+            donnees.append("pseudo", document.getElementById("pseudo").value.trim());
+            donnees.append("site_web", document.getElementById("site-web").value);
+            if (fichier) donnees.append("fichier", fichier);
 
             boutonEnvoyer.disabled = true;
             message.textContent = "Envoi en cours…";
 
             try {
-                const reponse = await fetch("envoyer", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        categorie: document.getElementById("categorie").value,
-                        question: document.getElementById("question").value.trim(),
-                        options: [...document.querySelectorAll(".reponse")].map((champ) => champ.value.trim()),
-                        bonne_reponse: bonne ? Number(bonne.value) : null,
-                        pseudo: document.getElementById("pseudo").value.trim(),
-                        site_web: document.getElementById("site-web").value,
-                    }),
-                });
+                const reponse = await fetch("envoyer", { method: "POST", body: donnees });
                 const resultat = await reponse.json().catch(() => ({}));
 
                 if (!reponse.ok || !resultat.ok) {
@@ -176,6 +200,7 @@
             formulaire.reset();
             garder.forEach(([id, valeur]) => (document.getElementById(id).value = valeur));
             message.textContent = "";
+            document.querySelector("#info-fichier small").textContent = "";
             document.getElementById("merci").hidden = true;
             formulaire.hidden = false;
             document.getElementById("question").focus();

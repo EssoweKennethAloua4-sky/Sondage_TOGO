@@ -5,3 +5,5 @@ venv/
 
 # Reponses du sondage (donnees du serveur, a ne pas ecraser)
 reponses_sondage.csv
+fichiers_recus/
+fichiers_recus.zip

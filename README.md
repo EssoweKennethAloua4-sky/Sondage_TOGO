@@ -40,3 +40,19 @@ from app import app as application
 
 Onglet **Files** → dossier `Sondage_TOGO` → télécharger `reponses_sondage.csv`.
 Garder les bonnes lignes et les coller dans `questions_togo.csv` du quiz, **sans les deux dernières colonnes**.
+
+### Fichiers joints
+
+Les participants peuvent joindre un fichier (photo, document, audio ou vidéo, 10 Mo maximum, pas de programmes).
+Ils arrivent dans le dossier `fichiers_recus/`, avec `liste_fichiers.csv` qui indique qui a envoyé quoi.
+Les fichiers ne sont jamais visibles sur le site : on les télécharge depuis l'onglet **Files**.
+
+Pour tout télécharger d'un coup, dans une console **Bash** :
+
+```bash
+cd Sondage_TOGO
+zip -r fichiers_recus.zip fichiers_recus
+```
+
+Puis télécharger `fichiers_recus.zip` depuis l'onglet **Files**.
+Au-delà de 300 Mo de fichiers reçus, le formulaire refuse les nouveaux fichiers (le compte gratuit a 512 Mo).
