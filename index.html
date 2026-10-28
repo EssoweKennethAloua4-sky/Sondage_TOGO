@@ -38,8 +38,65 @@
             color: #000;
         }
 
-        #resultat-import p {
+        .resultat p {
             margin: 4px 0;
+        }
+
+        .large {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .grille-cadre {
+            overflow-x: auto;
+        }
+
+        #grille {
+            width: 100%;
+            min-width: 900px;
+            border-collapse: collapse;
+        }
+
+        #grille th, #grille td {
+            border: 1px solid #000;
+            padding: 0;
+            text-align: left;
+        }
+
+        #grille th {
+            padding: 6px;
+        }
+
+        #grille td:first-child {
+            padding: 0 6px;
+            text-align: center;
+        }
+
+        #grille input, #grille select {
+            margin: 0;
+            border: none;
+            padding: 6px;
+        }
+
+        #grille th:nth-child(3) {
+            width: 30%;
+        }
+
+        #grille tr.refusee td {
+            background: #eee;
+        }
+
+        #grille .motif {
+            padding: 2px 6px;
+            font-size: 0.85rem;
+        }
+
+        button.secondaire {
+            width: auto;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #fff;
+            color: #000;
         }
 
         label, legend {
@@ -114,7 +171,7 @@
             à la place ou en plus de la question.
         </p>
         <p>
-            Vous avez beaucoup de questions ? <a href="#import">Utilisez notre modèle Excel</a>, en bas de la page.
+            Vous avez beaucoup de questions ? <a href="#plusieurs">Remplissez le tableau</a>, en bas de la page.
         </p>
 
         <form id="formulaire">
@@ -159,16 +216,46 @@
         </div>
 
         <hr>
+    </main>
 
-        <h2>Beaucoup de questions ?</h2>
+    <section id="plusieurs" class="large">
+        <h2>Beaucoup de questions ? Remplissez le tableau</h2>
         <p>
-            Remplissez notre modèle (une question par ligne), puis importez-le ici :
-            toutes vos questions seront ajoutées d'un coup.
+            Une question par ligne, comme dans Excel. Vous pouvez aussi <strong>copier des lignes depuis Excel</strong>
+            (ou Google Sheets) et les <strong>coller</strong> dans la première case : le tableau se remplit tout seul.
+            Bonne réponse : écrivez la réponse juste, ou son numéro (1, 2 ou 3).
         </p>
+
+        <div class="grille-cadre">
+            <table id="grille">
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Catégorie</th>
+                        <th>Question</th>
+                        <th>Réponse 1</th>
+                        <th>Réponse 2</th>
+                        <th>Réponse 3</th>
+                        <th>Bonne réponse</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <button type="button" id="ajouter-lignes" class="secondaire">+ Ajouter 5 lignes</button>
+
+        <label for="pseudo-tableau">Prénom <small>(facultatif)</small></label>
+        <input type="text" id="pseudo-tableau" maxlength="40">
+
+        <div id="resultat-tableau" class="resultat" role="status"></div>
+        <button type="button" id="envoyer-tableau">Envoyer toutes les questions</button>
+
+        <h2>Ou importez un fichier Excel</h2>
         <p>
             Télécharger le modèle :
             <a href="modele.xlsx">Excel (.xlsx)</a> ·
             <a href="modele.csv">CSV</a>
+            — remplissez-le, puis importez-le ici.
         </p>
 
         <form id="import">
@@ -178,10 +265,10 @@
             <label for="pseudo-import">Prénom <small>(facultatif)</small></label>
             <input type="text" id="pseudo-import" maxlength="40">
 
-            <div id="resultat-import" role="status"></div>
+            <div id="resultat-import" class="resultat" role="status"></div>
             <button type="submit" id="importer">Importer</button>
         </form>
-    </main>
+    </section>
 
     <script>
         const formulaire = document.getElementById("formulaire");
@@ -251,13 +338,139 @@
             document.getElementById("question").focus();
         });
 
+        // Tableau à remplir comme une feuille Excel
+        const CATEGORIES = ["Histoire", "Géographie", "Culture", "Sport", "Institutions"];
+        const corpsGrille = document.querySelector("#grille tbody");
+        const resultatTableau = document.getElementById("resultat-tableau");
+        const boutonTableau = document.getElementById("envoyer-tableau");
+
+        const sansAccents = (texte) => texte.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+
+        function numeroterLignes() {
+            [...corpsGrille.rows].forEach((ligne, i) => (ligne.cells[0].textContent = i + 1));
+        }
+
+        function ajouterLigne() {
+            const ligne = corpsGrille.insertRow();
+            ligne.insertCell();
+            const select = document.createElement("select");
+            select.innerHTML = '<option value=""></option>' + CATEGORIES.map((c) => `<option>${c}</option>`).join("");
+            ligne.insertCell().append(select);
+            const textes = [["Question", 200], ["", 80], ["", 80], ["", 80], ["1, 2, 3 ou la réponse", 80]];
+            for (const [indice, longueur] of textes) {
+                const champ = document.createElement("input");
+                champ.type = "text";
+                champ.maxLength = longueur;
+                champ.placeholder = indice;
+                ligne.insertCell().append(champ);
+            }
+            numeroterLignes();
+            return ligne;
+        }
+
+        function champsDeLigne(ligne) {
+            return [...ligne.querySelectorAll("select, input")];
+        }
+
+        function remplirCase(champ, valeur) {
+            if (champ.tagName === "SELECT") {
+                champ.value = CATEGORIES.find((c) => sansAccents(c) === sansAccents(valeur)) || "";
+            } else {
+                champ.value = valeur.trim();
+            }
+        }
+
+        // Coller plusieurs cases copiées depuis Excel : colonnes séparées par des tabulations
+        corpsGrille.addEventListener("paste", (evenement) => {
+            const texte = evenement.clipboardData.getData("text/plain");
+            if (!/[\t\n]/.test(texte.trim())) return;
+            evenement.preventDefault();
+
+            const depart = evenement.target.closest("td");
+            let ligne = depart.parentElement;
+            const colonneDepart = depart.cellIndex - 1;
+            const lignesCollees = texte.replace(/\r/g, "").replace(/\n+$/, "").split("\n");
+
+            for (const contenu of lignesCollees) {
+                const cases = contenu.split("\t");
+                // On saute la ligne d'en-tête si elle a été copiée avec
+                if (sansAccents(cases[0]) === "categorie") continue;
+                if (!ligne) ligne = ajouterLigne();
+                const champs = champsDeLigne(ligne);
+                cases.forEach((valeur, i) => {
+                    if (champs[colonneDepart + i]) remplirCase(champs[colonneDepart + i], valeur);
+                });
+                ligne = ligne.nextElementSibling;
+            }
+        });
+
+        document.getElementById("ajouter-lignes").addEventListener("click", () => {
+            for (let i = 0; i < 5; i++) ajouterLigne();
+        });
+
+        boutonTableau.addEventListener("click", async () => {
+            const lignes = [...corpsGrille.rows].map((ligne) => champsDeLigne(ligne).map((champ) => champ.value.trim()));
+            if (!lignes.some((cases) => cases.some(Boolean))) {
+                afficherResultat(resultatTableau, ["Le tableau est vide."]);
+                return;
+            }
+
+            boutonTableau.disabled = true;
+            afficherResultat(resultatTableau, ["Envoi en cours…"]);
+
+            try {
+                const reponse = await fetch("envoyer-tableau", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        lignes,
+                        pseudo: document.getElementById("pseudo-tableau").value.trim(),
+                        site_web: document.getElementById("site-web").value,
+                    }),
+                });
+                const resultat = await reponse.json().catch(() => ({}));
+
+                if (!reponse.ok || !resultat.ok) {
+                    afficherResultat(resultatTableau, [resultat.erreur || "L'envoi n'a pas marché, réessayez plus tard."]);
+                    return;
+                }
+
+                // On ne garde que les lignes refusées, avec la raison, pour les corriger
+                const refusees = resultat.refusees || {};
+                [...corpsGrille.rows].forEach((ligne, i) => {
+                    const motif = refusees[i + 1];
+                    if (!motif) return ligne.remove();
+                    ligne.classList.add("refusee");
+                    ligne.querySelector(".motif")?.remove();
+                    const texteMotif = document.createElement("div");
+                    texteMotif.className = "motif";
+                    texteMotif.textContent = "✘ " + motif;
+                    ligne.cells[2].append(texteMotif);
+                });
+                while (corpsGrille.rows.length < 5) ajouterLigne();
+                numeroterLignes();
+
+                const message = [`✔ ${resultat.ajoutees} question(s) ajoutée(s). Merci !`];
+                if (resultat.erreurs.length) {
+                    message.push(`✘ ${resultat.erreurs.length} ligne(s) à corriger, restées en gris dans le tableau. Corrigez-les puis renvoyez.`);
+                }
+                afficherResultat(resultatTableau, message);
+            } catch {
+                afficherResultat(resultatTableau, ["L'envoi n'a pas marché, réessayez plus tard."]);
+            } finally {
+                boutonTableau.disabled = false;
+            }
+        });
+
+        for (let i = 0; i < 10; i++) ajouterLigne();
+
         // Import de plusieurs questions avec le modèle Excel ou CSV
         const formulaireImport = document.getElementById("import");
         const resultatImport = document.getElementById("resultat-import");
         const boutonImporter = document.getElementById("importer");
 
-        function afficherResultat(lignes) {
-            resultatImport.replaceChildren(...lignes.map((texte) => {
+        function afficherResultat(zone, lignes) {
+            zone.replaceChildren(...lignes.map((texte) => {
                 const p = document.createElement("p");
                 p.textContent = texte;
                 return p;
@@ -269,7 +482,7 @@
             const tableau = document.getElementById("tableau").files[0];
             if (!tableau) return;
             if (tableau.size > TAILLE_MAX) {
-                afficherResultat(["Le fichier est trop lourd (10 Mo maximum)."]);
+                afficherResultat(resultatImport, ["Le fichier est trop lourd (10 Mo maximum)."]);
                 return;
             }
 
@@ -279,14 +492,14 @@
             donnees.append("site_web", document.getElementById("site-web").value);
 
             boutonImporter.disabled = true;
-            afficherResultat(["Import en cours…"]);
+            afficherResultat(resultatImport, ["Import en cours…"]);
 
             try {
                 const reponse = await fetch("importer", { method: "POST", body: donnees });
                 const resultat = await reponse.json().catch(() => ({}));
 
                 if (!reponse.ok || !resultat.ok) {
-                    afficherResultat([resultat.erreur || "L'import n'a pas marché, réessayez plus tard."]);
+                    afficherResultat(resultatImport, [resultat.erreur || "L'import n'a pas marché, réessayez plus tard."]);
                     return;
                 }
 
@@ -295,10 +508,10 @@
                     lignes.push(`✘ ${resultat.erreurs.length} ligne(s) refusée(s) — corrigez-les et réimportez le fichier :`);
                     lignes.push(...resultat.erreurs);
                 }
-                afficherResultat(lignes);
+                afficherResultat(resultatImport, lignes);
                 document.getElementById("tableau").value = "";
             } catch {
-                afficherResultat(["L'import n'a pas marché, réessayez plus tard."]);
+                afficherResultat(resultatImport, ["L'import n'a pas marché, réessayez plus tard."]);
             } finally {
                 boutonImporter.disabled = false;
             }

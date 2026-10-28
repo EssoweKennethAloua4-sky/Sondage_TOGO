@@ -141,7 +141,7 @@ def lire_tableau(fichier, extension):
 
 def ligne_vers_question(ligne):
     """Transforme une ligne du modèle en (catégorie, question, options, index_bonne)."""
-    ligne = (list(ligne) + [""] * 6)[:6]
+    ligne = ([texte_cellule(c) for c in ligne] + [""] * 6)[:6]
     categorie = CATEGORIES_SANS_ACCENTS.get(sans_accents(ligne[0]), nettoyer(ligne[0], 40))
     question = nettoyer(ligne[1], LONGUEUR_MAX_QUESTION)
     options = [nettoyer(o, LONGUEUR_MAX_REPONSE) for o in ligne[2:5]]
@@ -300,14 +300,33 @@ def importer():
     debut = 1
     if lignes and sans_accents(lignes[0][0] if lignes[0] else "") == "categorie":
         lignes, debut = lignes[1:], 2
-    if len(lignes) > LIGNES_MAX_IMPORT:
-        return erreur(f"Le fichier contient trop de lignes ({LIGNES_MAX_IMPORT} questions maximum).")
+    return enregistrer_lignes(lignes, debut, pseudo)
 
-    erreurs, nouvelles = [], []
+
+@app.route("/envoyer-tableau", methods=["POST"])
+def envoyer_tableau():
+    """Questions saisies dans le tableau du site (comme une feuille Excel)."""
+    donnees = request.get_json(silent=True) or {}
+    if donnees.get("site_web"):
+        return jsonify(ok=True, ajoutees=0, erreurs=[])
+
+    lignes = donnees.get("lignes")
+    if not isinstance(lignes, list) or not all(isinstance(l, list) for l in lignes):
+        return erreur("Tableau invalide.")
+    pseudo = nettoyer(donnees.get("pseudo"), LONGUEUR_MAX_PSEUDO) or "Anonyme"
+    return enregistrer_lignes(lignes, 1, pseudo)
+
+
+def enregistrer_lignes(lignes, debut, pseudo):
+    """Vérifie chaque ligne du tableau et ajoute les questions valables."""
+    if len(lignes) > LIGNES_MAX_IMPORT:
+        return erreur(f"Trop de lignes ({LIGNES_MAX_IMPORT} questions maximum).")
+
+    erreurs, refusees, nouvelles = [], {}, []
     with verrou:
         deja_vues = {q["Question"].strip().lower() for q in lire_reponses()}
         for numero, ligne in enumerate(lignes, start=debut):
-            if not any(str(c).strip() for c in ligne):
+            if not any(texte_cellule(c).strip() for c in ligne):
                 continue
             categorie, question, options, index_bonne = ligne_vers_question(ligne)
             if question == EXEMPLE[1]:
@@ -317,6 +336,7 @@ def importer():
                 probleme = "Cette question a déjà été proposée."
             if probleme:
                 erreurs.append(f"Ligne {numero} : {probleme}")
+                refusees[numero] = probleme
                 continue
             deja_vues.add(question.lower())
             nouvelles.append([categorie, question, *options, options[index_bonne], pseudo, date.today().isoformat()])
@@ -325,8 +345,9 @@ def importer():
             ajouter_ligne(FICHIER_REPONSES, COLONNES, nouvelle)
 
     if not nouvelles and not erreurs:
-        return erreur("Le fichier ne contient aucune question.")
-    return jsonify(ok=True, ajoutees=len(nouvelles), erreurs=erreurs)
+        return erreur("Aucune question à envoyer.")
+    # « refusees » permet au tableau du site de garder seulement les lignes à corriger
+    return jsonify(ok=True, ajoutees=len(nouvelles), erreurs=erreurs, refusees=refusees)
 
 
 if __name__ == "__main__":

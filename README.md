@@ -41,9 +41,15 @@ from app import app as application
 Onglet **Files** → dossier `Sondage_TOGO` → télécharger `reponses_sondage.csv`.
 Garder les bonnes lignes et les coller dans `questions_togo.csv` du quiz, **sans les deux dernières colonnes**.
 
+### Tableau sur le site (comme Excel)
+
+En bas de la page, un tableau permet de saisir plusieurs questions d'un coup, une par ligne.
+On peut y coller des lignes copiées depuis Excel ou Google Sheets : le tableau se remplit tout seul.
+Après l'envoi, les lignes acceptées disparaissent et les lignes refusées restent en gris avec la raison.
+
 ### Import de plusieurs questions (modèle Excel / CSV)
 
-En bas du formulaire, on peut télécharger un modèle (`/modele.xlsx` ou `/modele.csv`) avec les colonnes
+En bas du formulaire, on peut aussi télécharger un modèle (`/modele.xlsx` ou `/modele.csv`) avec les colonnes
 `Catégorie, Question, Réponse 1, Réponse 2, Réponse 3, Bonne réponse`, le remplir (à la main ou avec une IA),
 puis l'importer : chaque ligne valable est ajoutée à `reponses_sondage.csv`, comme si elle avait été tapée dans le formulaire.
 
