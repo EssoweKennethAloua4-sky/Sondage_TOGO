@@ -24,6 +24,24 @@
             font-size: 1.6rem;
         }
 
+        h2 {
+            font-size: 1.2rem;
+        }
+
+        hr {
+            margin: 40px 0 24px;
+            border: none;
+            border-top: 1px solid #000;
+        }
+
+        a {
+            color: #000;
+        }
+
+        #resultat-import p {
+            margin: 4px 0;
+        }
+
         label, legend {
             display: block;
             margin-top: 18px;
@@ -95,6 +113,9 @@
             Vous pouvez aussi joindre un fichier (photo, document, note vocale…)
             à la place ou en plus de la question.
         </p>
+        <p>
+            Vous avez beaucoup de questions ? <a href="#import">Utilisez notre modèle Excel</a>, en bas de la page.
+        </p>
 
         <form id="formulaire">
             <label for="categorie">Catégorie</label>
@@ -136,6 +157,30 @@
             <p><strong>Merci, votre envoi a bien été enregistré !</strong></p>
             <button type="button" id="autre">Proposer une autre question</button>
         </div>
+
+        <hr>
+
+        <h2>Beaucoup de questions ?</h2>
+        <p>
+            Remplissez notre modèle (une question par ligne), puis importez-le ici :
+            toutes vos questions seront ajoutées d'un coup.
+        </p>
+        <p>
+            Télécharger le modèle :
+            <a href="modele.xlsx">Excel (.xlsx)</a> ·
+            <a href="modele.csv">CSV</a>
+        </p>
+
+        <form id="import">
+            <label for="tableau">Fichier rempli <small>(.xlsx ou .csv)</small></label>
+            <input type="file" id="tableau" accept=".xlsx,.csv" required>
+
+            <label for="pseudo-import">Prénom <small>(facultatif)</small></label>
+            <input type="text" id="pseudo-import" maxlength="40">
+
+            <div id="resultat-import" role="status"></div>
+            <button type="submit" id="importer">Importer</button>
+        </form>
     </main>
 
     <script>
@@ -204,6 +249,59 @@
             document.getElementById("merci").hidden = true;
             formulaire.hidden = false;
             document.getElementById("question").focus();
+        });
+
+        // Import de plusieurs questions avec le modèle Excel ou CSV
+        const formulaireImport = document.getElementById("import");
+        const resultatImport = document.getElementById("resultat-import");
+        const boutonImporter = document.getElementById("importer");
+
+        function afficherResultat(lignes) {
+            resultatImport.replaceChildren(...lignes.map((texte) => {
+                const p = document.createElement("p");
+                p.textContent = texte;
+                return p;
+            }));
+        }
+
+        formulaireImport.addEventListener("submit", async (evenement) => {
+            evenement.preventDefault();
+            const tableau = document.getElementById("tableau").files[0];
+            if (!tableau) return;
+            if (tableau.size > TAILLE_MAX) {
+                afficherResultat(["Le fichier est trop lourd (10 Mo maximum)."]);
+                return;
+            }
+
+            const donnees = new FormData();
+            donnees.append("tableau", tableau);
+            donnees.append("pseudo", document.getElementById("pseudo-import").value.trim());
+            donnees.append("site_web", document.getElementById("site-web").value);
+
+            boutonImporter.disabled = true;
+            afficherResultat(["Import en cours…"]);
+
+            try {
+                const reponse = await fetch("importer", { method: "POST", body: donnees });
+                const resultat = await reponse.json().catch(() => ({}));
+
+                if (!reponse.ok || !resultat.ok) {
+                    afficherResultat([resultat.erreur || "L'import n'a pas marché, réessayez plus tard."]);
+                    return;
+                }
+
+                const lignes = [`✔ ${resultat.ajoutees} question(s) ajoutée(s). Merci !`];
+                if (resultat.erreurs.length) {
+                    lignes.push(`✘ ${resultat.erreurs.length} ligne(s) refusée(s) — corrigez-les et réimportez le fichier :`);
+                    lignes.push(...resultat.erreurs);
+                }
+                afficherResultat(lignes);
+                document.getElementById("tableau").value = "";
+            } catch {
+                afficherResultat(["L'import n'a pas marché, réessayez plus tard."]);
+            } finally {
+                boutonImporter.disabled = false;
+            }
         });
     </script>
 </body>
