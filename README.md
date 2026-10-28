@@ -61,7 +61,7 @@ puis l'importer : chaque ligne valable est ajoutée à `reponses_sondage.csv`, c
 
 ### Fichiers joints
 
-Les participants peuvent joindre un fichier (photo, document, audio ou vidéo, 10 Mo maximum, pas de programmes).
+Les participants peuvent joindre un fichier (photo ou document, 10 Mo maximum ; pas d'audio, de vidéo ni de programmes).
 Ils arrivent dans le dossier `fichiers_recus/`, avec `liste_fichiers.csv` qui indique qui a envoyé quoi.
 Les fichiers ne sont jamais visibles sur le site : on les télécharge depuis l'onglet **Files**.
 

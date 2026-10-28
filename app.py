@@ -30,12 +30,10 @@ LONGUEUR_MAX_QUESTION = 200
 LONGUEUR_MAX_REPONSE = 80
 LONGUEUR_MAX_PSEUDO = 40
 
-# Fichiers acceptés : documents, images, audio et vidéo (pas de programmes exécutables)
+# Fichiers acceptés : documents et images (pas d'audio, de vidéo ni de programmes)
 EXTENSIONS_AUTORISEES = {
     "pdf", "doc", "docx", "odt", "rtf", "txt", "csv", "xls", "xlsx", "ods", "ppt", "pptx", "odp",
     "jpg", "jpeg", "png", "gif", "webp", "heic",
-    "mp3", "m4a", "ogg", "opus", "wav", "aac",
-    "mp4", "mov", "3gp", "webm",
 }
 TAILLE_MAX_FICHIER = 10 * 1024 * 1024
 
@@ -202,7 +200,7 @@ def envoyer():
     if fichier:
         extension = fichier.filename.rsplit(".", 1)[-1].lower() if "." in fichier.filename else ""
         if extension not in EXTENSIONS_AUTORISEES:
-            return erreur("Ce type de fichier n'est pas accepté (photos, documents, audio et vidéo uniquement).")
+            return erreur("Ce type de fichier n'est pas accepté (photos et documents uniquement).")
 
     with verrou:
         if avec_question and any(q["Question"].strip().lower() == question.lower() for q in lire_reponses()):
